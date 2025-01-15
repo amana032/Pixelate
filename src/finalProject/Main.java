@@ -1,4 +1,4 @@
-package finalProject;
+package cs178;
 
 @SuppressWarnings("serial")
 public class Main extends Grid{
