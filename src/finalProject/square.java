@@ -1,4 +1,4 @@
-package finalProject;
+package cs178;
 
 import java.awt.Color;
 
