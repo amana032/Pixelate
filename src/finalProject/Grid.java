@@ -1,4 +1,4 @@
-package finalProject;
+package cs178;
 
 import java.awt.*;
 import javax.swing.*;
@@ -7,23 +7,36 @@ import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
-
+import java.util.HashMap;
+import java.util.Map;
 
 @SuppressWarnings("serial")
 
 public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	
 	static JFrame window = new JFrame("Pixelate");
+	static JFrame toolSuite = new JFrame("Tools");
+	JPanel tools = new JPanel(new GridLayout(5, 1));
+	colorChooser colorWheel = new colorChooser();
 	
 	// Declare buttons for the Tool Suite 
 	JButton brushButton = new JButton("Brush");
 	JButton fillButton = new JButton("Fill");
 	JButton resetButton = new JButton("Reset");
 	JButton undoButton = new JButton("Undo");
+	JButton colorButton = new JButton("Color Picker");
 	
+	// Text for color approximation
+	JLabel colorApprox = new JLabel("");
 	
 	static boolean isFill = false;
 	static boolean isUndo = false;
+	
+	// Mouse listeners
+    int globalX = 10000;
+    int globalY;
+    int globalRow; 
+    int globalCol;
 	
 	// Grid setup
 	int gridNum; // number of pixel boxes
@@ -34,6 +47,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	Color[] paletteColors = new Color[] { Color.red, Color.orange, Color.yellow, Color.green, Color.cyan, Color.blue,
 			Color.MAGENTA, Color.pink, Color.darkGray, Color.lightGray, Color.black, Color.white };
 	Color currentColor = Color.blue;
+	Color customColor = Color.white;
 	Color secondColor = Color.black;
 	Color backgroundColor = new Color(238, 238, 238);
 	
@@ -41,6 +55,15 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	static square[][] gridColors;
 	static square[][] previousColors;
 	static square[][] recentColors;
+	
+	public void Tools() { 
+	    tools.setLayout(new GridLayout(4, 1)); 
+	    tools.add(brushButton);
+	    tools.add(fillButton);
+	    tools.add(resetButton);
+	    tools.add(undoButton);
+	    tools.add(colorButton);
+	}
 
 	public Grid(int gridSize) {
 		gridNum = gridSize;
@@ -48,34 +71,38 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 		
 		// Create the buttons on the window
 		window.setBackground(backgroundColor);
-		window.add(brushButton);
-		window.add(fillButton);
-		window.add(resetButton);
-		window.add(undoButton);
-
+		window.add(colorApprox);
+		colorApprox.setBounds(10,10,200,20);
+		
 		// Brush commands
 		brushButton.setActionCommand("brush thing");
-		brushButton.setBounds(575, 50, 50, 50);
-		brushButton.setMargin(new Insets(0, 0, 0, 0));
 		brushButton.addActionListener(new listener());
+		brushButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+		brushButton.setBackground(Color.WHITE);
 
 		// Fill Tool commands
 		fillButton.setActionCommand("fill thing");
-		fillButton.setBounds(575, 200, 50, 50);
 		fillButton.addActionListener(new listener());
+		fillButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+		fillButton.setBackground(Color.WHITE);
 
 		// Reset commands
 		resetButton.setActionCommand("reset thing");
-		resetButton.setBounds(770, 50, 50, 50);
-		resetButton.setMargin(new Insets(0, 0, 0, 0));
 		resetButton.addActionListener(new listener());
+		resetButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+		resetButton.setBackground(Color.WHITE);
 
 		// Undo Tool commands
 		undoButton.setActionCommand("undo thing");
-		undoButton.setBounds(770, 200, 50, 50);
-		undoButton.setMargin(new Insets(0, 0, 0, 0));
 		undoButton.addActionListener(new listener());
-
+		undoButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+		undoButton.setBackground(Color.WHITE);
+		
+		colorButton.setActionCommand("color thing");
+		colorButton.addActionListener(new listener());
+		colorButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+		colorButton.setBackground(Color.WHITE);
+		
 		setFocusable(true);
 
 		// Event listeners created and added to the window
@@ -113,7 +140,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	@Override
-	public void paint(Graphics g) {
+	public void paint(Graphics g) { // Window painting (aka draw)
 		Graphics2D g2d = (Graphics2D) g;
 		int colorCounter = 0;
 
@@ -121,21 +148,11 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 		for (int i = 0; i < gridNum; i++) {
 			for (int j = 0; j < gridNum; j++) {
 
-				// Buttons are rude and wont change colors dynamically
-				// so here's a toggle instead
-				if (isFill) {
-					g2d.setColor(Color.GRAY);
-					g2d.fillRect(570, 195, 5, 55);
-					g2d.fillRect(570, 195, 55, 5);
-					g2d.fillRect(625, 195, 5, 60);
-					g2d.fillRect(570, 250, 55, 5);
-				}
-
-				// Draws the color boxes
+				// Draws the pixel boxes
 				g2d.setColor(gridColors[i][j].getColor());
 				g2d.fillRect((i * 15) + 30, (j * 15) + 30, 15, 15);
 
-				// Draws the borders of color boxes
+				// Draws the borders of pixel boxes
 				g2d.setColor(Color.gray);
 				g2d.drawRect((i * 15) + 30, (j * 15) + 30, 15, 15);
 
@@ -171,6 +188,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	// Mouse Listener overrides
 	@Override
 	public void mouseClicked(MouseEvent e) {
+		window.repaint();
 	}
 
 	@Override
@@ -190,7 +208,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 		int colorRow = (int) (x / 30) - 1;
 		int colorCol = (int) (y / 30) - 18;
 		Color setColor = null;
-
+	
 		if (SwingUtilities.isLeftMouseButton(e))
 			setColor = currentColor;
 
@@ -230,7 +248,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 			}
 		}
 
-		// Clicking on the color palette
+//		// Clicking on the color palette
 		if (x < 210 && x > 30 && y < gridLength + 90 && y > gridLength + 30) {
 			if (colorCol == 0) {
 				if (colorRow == 0)
@@ -276,6 +294,7 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 
 			if (SwingUtilities.isRightMouseButton(e))
 				secondColor = setColor;
+	
 		}
 
 		window.repaint();
@@ -374,9 +393,37 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	}
 
 	@Override
-	public void mouseMoved(MouseEvent e) {
+    public void mouseMoved(MouseEvent e) {
+		colorApprox.setText("");
+        globalX = e.getX();
+        globalY = e.getY();
+        Color color = null;
+        String colorName;
+        if (e.getX() < 30 + (gridNum * 15) && e.getX() > 30 && e.getY() < 30 + (gridNum * 15) && e.getY() > 30) {
+            globalRow = (globalX / 15) - 2;
+            globalCol = (globalY / 15) - 2;
+            color = gridColors[globalRow][globalCol].getColor();
+            
+            Map<Color, String> colorNames = new HashMap<>();
+            colorNames.put(Color.RED, "Red");
+            colorNames.put(Color.ORANGE, "Orange");
+            colorNames.put(Color.YELLOW, "Yellow");
+            colorNames.put(Color.GREEN, "Green");
+            colorNames.put(Color.CYAN, "Cyan");
+            colorNames.put(Color.BLUE, "Blue");
+            colorNames.put(Color.MAGENTA, "Magenta");
+            colorNames.put(Color.darkGray, "Dark Gray");
+            colorNames.put(Color.lightGray, "Light Gray");
+            colorNames.put(Color.WHITE, "White");
+            colorNames.put(Color.BLACK, "Black");
+            
+            colorName = colorNames.get(color);
+            colorApprox.setText(colorName);
+        }
+        
+        window.repaint();
 
-	}
+    }
 
 	public void fillTool(int x, int y, Color prev, Color current) {
 		// System.out.println("fill function starts");
@@ -421,6 +468,18 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 					// System.out.println("turn off fill");
 
 				}
+			}
+			
+			// Color picker pressed
+			if (e.getActionCommand().equals("color thing")) {
+				 Color initialcolor = Color.WHITE;
+				 
+			        // color chooser Dialog Box
+				 customColor = JColorChooser.showDialog(null,
+			                    "Select a color", initialcolor);
+				 Grid.window.requestFocus();
+			 
+			        
 			}
 
 			// Brush size tool button pressed
@@ -482,10 +541,20 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 
 	public void makeGrid(int gridSize) {
 		window.add(new Grid(gridSize));
-		window.setSize(900, 700);
+		window.setSize(560, 700);
 		window.setVisible(true);
 		window.setLayout(null);
 		window.setResizable(false);
 		window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		
+		// Set up tool suite
+	    Tools(); // Ensure buttons are added properly
+	    toolSuite.add(tools);
+	    toolSuite.setSize(250, 200);
+	    toolSuite.setResizable(false);
+	    toolSuite.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	    toolSuite.setVisible(true);
+	    
+	    //colorWheel.createAndShowGUI();
 	}
 }
