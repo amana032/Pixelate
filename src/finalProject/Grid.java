@@ -1,5 +1,7 @@
-package cs178;
+// Declaring our Pixelate package.
+package Pixelate;
 
+// Importing the necessary libraries.
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
@@ -14,49 +16,56 @@ import java.util.Map;
 
 public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	
-	static JFrame window = new JFrame("Pixelate");
+	// Creating our windows and panels.
+	static JFrame window    = new JFrame("Pixelate");
 	static JFrame toolSuite = new JFrame("Tools");
 	JPanel tools = new JPanel(new GridLayout(5, 1));
 	colorChooser colorWheel = new colorChooser();
 	
-	// Declare buttons for the Tool Suite 
+	// Creating buttons for our tool suite.
 	JButton brushButton = new JButton("Brush");
-	JButton fillButton = new JButton("Fill");
+	JButton fillButton  = new JButton("Fill");
 	JButton resetButton = new JButton("Reset");
-	JButton undoButton = new JButton("Undo");
+	JButton undoButton  = new JButton("Undo");
 	JButton colorButton = new JButton("Color Picker");
 	
-	// Text for color approximation
+	// Creating a label for our color approximation.
 	JLabel colorApprox = new JLabel("");
 	
 	static boolean isFill = false;
 	static boolean isUndo = false;
 	
-	// Mouse listeners
+	// Mouse position variables.
     int globalX = 10000;
     int globalY;
     int globalRow; 
     int globalCol;
 	
-	// Grid setup
-	int gridNum; // number of pixel boxes
-	int gridLength; // exact pixel measurement of grid
-	static int brushSize = 1; // current brush size
+	// Grid setup.
+	int gridNum;    		   // number of pixel boxes
+	int gridLength;            // exact pixel measurement of grid
+	static int brushSize = 1;  // Current brush size (1, 2, or 3).
 	
-	// Color objects and array
-	Color[] paletteColors = new Color[] { Color.red, Color.orange, Color.yellow, Color.green, Color.cyan, Color.blue,
-			Color.MAGENTA, Color.pink, Color.darkGray, Color.lightGray, Color.black, Color.white };
+	// Color Palette:
+	Color[] colorPalette = new Color[] { 
+		Color.red, Color.orange, Color.yellow, Color.green, Color.cyan, Color.blue,
+		Color.MAGENTA, Color.pink, Color.darkGray, Color.lightGray, Color.black, Color.white 
+	};
+	// Default colors.
 	Color currentColor = Color.blue;
-	Color customColor = Color.white;
 	Color secondColor = Color.black;
-	Color backgroundColor = new Color(238, 238, 238);
+	Color customColor = Color.white;
+	// Our background color will be a light gray.
+	Color bgColor = new Color(238, 238, 238);
 	
 	// Canvas + copies of the canvas for undo-redo
-	static square[][] gridColors;
-	static square[][] previousColors;
-	static square[][] recentColors;
+	static Pixel[][] canvas;
+	static Pixel[][] prevCanvasCopy;
+	static Pixel[][] curCanvasCopy;
 	
-	public void Tools() { 
+	// Adding buttons to our tool suite.
+	public void addToolButtons() { 
+		// # wasn't this already set in line 22?
 	    tools.setLayout(new GridLayout(4, 1)); 
 	    tools.add(brushButton);
 	    tools.add(fillButton);
@@ -65,127 +74,114 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	    tools.add(colorButton);
 	}
 
+	// Our Grid constructor:
 	public Grid(int gridSize) {
 		gridNum = gridSize;
 		gridLength = gridSize * 15 + 30; // Pixel dimensions of the grid
 		
-		// Create the buttons on the window
-		window.setBackground(backgroundColor);
+		// Setting up our window.
+		window.setBackground(bgColor);
 		window.add(colorApprox);
 		colorApprox.setBounds(10,10,200,20);
 		
-		// Brush commands
-		brushButton.setActionCommand("brush thing");
+		// Brush commands.
+		brushButton.setActionCommand("Brush Object");
 		brushButton.addActionListener(new listener());
 		brushButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 		brushButton.setBackground(Color.WHITE);
 
-		// Fill Tool commands
-		fillButton.setActionCommand("fill thing");
+		// Fill Tool commands.
+		fillButton.setActionCommand("Fill Object");
 		fillButton.addActionListener(new listener());
 		fillButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 		fillButton.setBackground(Color.WHITE);
 
-		// Reset commands
-		resetButton.setActionCommand("reset thing");
+		// Reset commands.
+		resetButton.setActionCommand("Reset Object");
 		resetButton.addActionListener(new listener());
 		resetButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 		resetButton.setBackground(Color.WHITE);
 
-		// Undo Tool commands
-		undoButton.setActionCommand("undo thing");
+		// Undo Tool commands.
+		undoButton.setActionCommand("Undo Object");
 		undoButton.addActionListener(new listener());
 		undoButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 		undoButton.setBackground(Color.WHITE);
 		
-		colorButton.setActionCommand("color thing");
+		// Color Button commands.
+		colorButton.setActionCommand("Color Object");
 		colorButton.addActionListener(new listener());
 		colorButton.setAlignmentX(Component.CENTER_ALIGNMENT);
 		colorButton.setBackground(Color.WHITE);
 		
+		// Making our grid an active component that can receive focus/inputs.
 		setFocusable(true);
 
-		// Event listeners created and added to the window
+		// Event listeners for our window.
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		window.addMouseListener(this);
 		window.addMouseMotionListener(this);
 
-		// 2D arrays containing the current canvas, a copy of the canvas before the last stroke, and a copy of the current canvas
-		gridColors = new square[gridSize][gridSize];
-		previousColors = new square[gridSize][gridSize];
-		recentColors = new square[gridSize][gridSize];
+		// Our current canvas, a copy of the canvas before the last stroke, and a copy of the current canvas
+		canvas         = new Pixel[gridSize][gridSize];
+		prevCanvasCopy = new Pixel[gridSize][gridSize];
+		curCanvasCopy  = new Pixel[gridSize][gridSize];
 		
-		// Fill each array with square objects
-		for (int i = 0; i < gridColors.length; i++) {
-			for (int j = 0; j < gridColors[i].length; j++) {
-				gridColors[i][j] = new square();
-
-			}
-		}
-
-		for (int i = 0; i < recentColors.length; i++) {
-			for (int j = 0; j < recentColors[i].length; j++) {
-				recentColors[i][j] = new square();
-
-			}
-		}
-
-		for (int i = 0; i < previousColors.length; i++) {
-			for (int j = 0; j < previousColors[i].length; j++) {
-				previousColors[i][j] = new square();
-
+		// Fill each 2D-array with Pixel objects.
+		for(int i = 0; i < canvas.length; i++) {
+			for(int j = 0; j < canvas[i].length; j++) {
+				canvas[i][j]         = new Pixel();
+				prevCanvasCopy[i][j] = new Pixel();
+				curCanvasCopy[i][j]  = new Pixel();
 			}
 		}
 	}
 
+	// This method handles drawing/painting our grid.
 	@Override
-	public void paint(Graphics g) { // Window painting (aka draw)
+	public void paint(Graphics g) { 
 		Graphics2D g2d = (Graphics2D) g;
 		int colorCounter = 0;
 
-		// paints grid
-		for (int i = 0; i < gridNum; i++) {
-			for (int j = 0; j < gridNum; j++) {
-
-				// Draws the pixel boxes
-				g2d.setColor(gridColors[i][j].getColor());
+		// Painting our grid:
+		for(int i = 0; i < gridNum; i++) {
+			for(int j = 0; j < gridNum; j++) {
+				// Draws each pixel box.
+				g2d.setColor(canvas[i][j].getColor());
 				g2d.fillRect((i * 15) + 30, (j * 15) + 30, 15, 15);
-
-				// Draws the borders of pixel boxes
+				// Draws the borders of our pixel boxes.
 				g2d.setColor(Color.gray);
 				g2d.drawRect((i * 15) + 30, (j * 15) + 30, 15, 15);
-
 			}
 		}
 
-		// Paints the color palette
-		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < 2; j++) {
-				g2d.setColor(paletteColors[colorCounter]);
+		// Painting the color palette:
+		// # We need to remove hard-coded values. Consider using vars. for the # of colors.
+		for(int i = 0; i < 6; i++) {
+			for(int j = 0; j < 2; j++) {
+				g2d.setColor(colorPalette[colorCounter]);
 				colorCounter++;
 				g2d.fillRect((i * 30) + 30, (j * 30) + gridLength + 30, 30, 30);
 				g2d.setColor(Color.darkGray);
 				g2d.drawRect((i * 30) + 30, (j * 30) + gridLength + 30, 30, 30);
-
 			}
 		}
 
-		// Paints Current Color Box
+		// Painting our current color box.
 		g2d.setColor(currentColor);
 		g2d.fillRect(240, 540, 60, 60);
 		g2d.setColor(Color.darkGray);
 		g2d.drawRect(240, 540, 60, 60);
 
-		// Paints Second Color Box
+		// Painting our second color box.
 		g2d.setColor(secondColor);
 		g2d.fillRect(330, 540, 60, 60);
 		g2d.setColor(Color.darkGray);
 		g2d.drawRect(330, 540, 60, 60);
-
 	}
 
-	// Mouse Listener overrides
+	// Mouse Listener overrides:
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		window.repaint();
@@ -203,8 +199,10 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 	public void mousePressed(MouseEvent e) {
 		int x = e.getX();
 		int y = e.getY();
+		// # Consider using vars. for the hard-coded values. What do these values represent?
 		int row = (int) (x / 15) - 2;
 		int col = (int) (y / 15) - 2;
+		// # What do these values represent? 
 		int colorRow = (int) (x / 30) - 1;
 		int colorCol = (int) (y / 30) - 18;
 		Color setColor = null;
@@ -221,34 +219,35 @@ public class Grid extends JPanel implements MouseListener, MouseMotionListener {
 		// System.out.println(row + ", " + col);
 		// System.out.println("Point: " + x + ", " + y);
 
-		// Painting on the grid
+		// Painting the grid:
 		if (x < 30 + (gridNum * 15) && x > 30 && y < 30 + (gridNum * 15) && y > 30) {
 
 			// Reset button (makes backup grid)
-			for (int i = 0; i < 32; i++) {
-				for (int j = 0; j < 32; j++) {
-					previousColors[i][j].setColorBasic(gridColors[i][j].getColor());
+			for(int i = 0; i < 32; i++) {
+				for(int j = 0; j < 32; j++) {
+					prevCanvasCopy[i][j].setColor(canvas[i][j].getColor());
 
 					if (isUndo == true) {
-						recentColors[i][j].setColorBasic(gridColors[i][j].getColor());
+						curCanvasCopy[i][j].setColor(canvas[i][j].getColor());
 						isUndo = false;
 					}
 				}
 			}
 
-			// fill tool
+			// Handles the fill tool:
 			if (isFill == true) {
-				fillTool(row, col, gridColors[row][col].getColor(), setColor);
-
-			} else if (isFill == false) {
-
-				gridColors[row][col].setColorBasic(setColor);
+				// Using the fill tool.
+				fillTool(row, col, canvas[row][col].getColor(), setColor);
+			} else {
+				// By default, we paint the grid w/o the fill tool.
+				canvas[row][col].setColor(setColor);
 				brushCheck(row, col, setColor);
-				
 			}
 		}
 
-//		// Clicking on the color palette
+		// # CONTINUE HERE.... (ABDI & AAMIR - Last checked 1/18/25)
+		
+		// Clicking on the color palette
 		if (x < 210 && x > 30 && y < gridLength + 90 && y > gridLength + 30) {
 			if (colorCol == 0) {
 				if (colorRow == 0)

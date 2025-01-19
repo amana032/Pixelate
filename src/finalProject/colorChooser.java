@@ -1,8 +1,10 @@
 // Java program to implement JColorChooser
 // class using ChangeListener
 
-package cs178;
+// Declaring our Pixelate package.
+package Pixelate;
 
+// Importing the necessary libraries.
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
@@ -11,9 +13,7 @@ import javax.swing.colorchooser.*;
  
 @SuppressWarnings("serial")
 
-public class colorChooser extends JPanel
- 
-    implements ChangeListener {
+public class colorChooser extends JPanel implements ChangeListener {
  
     public JColorChooser Jcc;
     public Color chosenColor;
